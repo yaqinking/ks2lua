@@ -8,11 +8,11 @@
 
 #import "ViewController.h"
 
-@interface ViewController()
+static NSString * const ksFileNameKey = @"storage";
 
-@property (assign) IBOutlet NSTextView *sourceTextView;
-@property (assign) IBOutlet NSTextView *outputTextView;
-@property (weak) IBOutlet NSTextField *fileNameTextField;
+@interface ViewController()<NSTextFieldDelegate>
+
+@property (weak) IBOutlet NSTextField *sourcePathLabel;
 
 typedef void (^ksEachBlock)(NSString *obj);
 
@@ -26,8 +26,71 @@ typedef void (^ksEachBlock)(NSString *obj);
 
 # pragma mark Interface Builder Action
 
+- (IBAction)choosePath:(id)sender {
+    NSOpenPanel *openPanel = [NSOpenPanel openPanel];
+    openPanel.canChooseFiles       = NO;
+    openPanel.canChooseDirectories = YES;
+    openPanel.prompt               = @"OK";
+    if ([openPanel runModal] == NSModalResponseOK) {
+        NSURL *url = [openPanel URL];
+        self.sourcePathLabel.stringValue = url.path;
+    }
+}
+
 - (IBAction)startAnalysis:(id)sender {
-    NSArray<NSString *> *linesArray = [self.sourceTextView.textStorage.string componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+    NSString *path = self.sourcePathLabel.stringValue;
+    NSURL *pathURL = [NSURL URLWithString:path];
+    if (path.length < 1 || [pathURL.pathExtension isEqualToString:@"ks"]) {
+        return;
+    }
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSDirectoryEnumerator *enumerator = [fileManager enumeratorAtURL:pathURL
+                                               includingPropertiesForKeys:@[NSURLNameKey, NSURLIsDirectoryKey]
+                                                                  options:NSDirectoryEnumerationSkipsHiddenFiles
+                                                             errorHandler:^BOOL(NSURL *url, NSError *error)
+                                         {
+                                             if (error) {
+                                                 NSLog(@"[Error] %@ (%@)", error, url);
+                                                 return NO;
+                                             }
+                                             
+                                             return YES;
+                                         }];
+    
+    NSMutableArray *mutableFileURLs = [NSMutableArray array];
+    for (NSURL *fileURL in enumerator) {
+        NSString *filename;
+        [fileURL getResourceValue:&filename forKey:NSURLNameKey error:nil];
+        
+        NSNumber *isDirectory;
+        [fileURL getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
+        // Skip directories with '_' prefix, for example
+        if ([filename hasPrefix:@"_"] && [isDirectory boolValue]) {
+            [enumerator skipDescendants];
+            continue;
+        }
+        
+        if (![isDirectory boolValue]) {
+            [mutableFileURLs addObject:fileURL];
+        }
+    }
+    
+    unsigned long encode = CFStringConvertEncodingToNSStringEncoding(kCFStringEncodingGB_18030_2000);
+    [mutableFileURLs enumerateObjectsUsingBlock:^(id  _Nonnull filePath, NSUInteger idx, BOOL * _Nonnull stop) {
+        NSURL *url = filePath;
+        NSError *error = nil;
+        NSString *contentString = [NSString stringWithContentsOfFile:url.path encoding:encode error:&error];
+        if (error) {
+            NSLog(@"%@", error);
+        }
+        NSString *path = [url.path stringByReplacingOccurrencesOfString:@".ks" withString:@".lua"];
+        [self tranlateKs:contentString saveTo:path];
+    }];
+    
+}
+
+- (void)tranlateKs:(NSString *)content saveTo:(NSString *)path {
+    NSArray<NSString *> *linesArray = [content componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     
     __block NSString *chracterName;
     __block NSString *soundEffectName;
@@ -147,7 +210,7 @@ typedef void (^ksEachBlock)(NSString *obj);
             [outputText appendString:line];
             return;
         }
-
+        
         if ([line containsString:@"@bg"]) {
             __block NSString *backgroundImageName;
             __block NSString *backgroundTransitionMethod;
@@ -193,6 +256,16 @@ typedef void (^ksEachBlock)(NSString *obj);
                 }
             }];
         }
+        if ([line containsString:@"@cg"]) {
+            __block NSString *cgName;
+            [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
+                NSString *cgFileName = [self valueForksKey:ksFileNameKey From:line];
+                if (cgFileName) {
+                    cgName = cgFileName;
+                }
+            }];
+            [outputText appendFormat:@"cg(\"%@\",1,0,0,0)\r", cgName];
+        }
         if ([line containsString:@"spk"]) {
             line = [self removeSpeakerNoiseChracter:line];
             NSRange range = [line rangeOfString:@"="];
@@ -236,14 +309,12 @@ typedef void (^ksEachBlock)(NSString *obj);
             }
         }
     }];
-    [self configureOutputTextViewWith:outputText];
-    /*
+    
     NSError *error;
-    NSString *fileName = [NSString stringWithFormat:@"/Users/yaqinking/Downloads/scenario_lua/%@.lua", self.fileNameTextField.stringValue];
-    [outputText writeToFile:fileName atomically:YES encoding:NSUTF8StringEncoding error:&error];
+    [outputText writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:&error];
     if (error) {
         NSLog(@"Error %@", error);
-    }*/
+    }
 }
 
 /**
@@ -297,11 +368,6 @@ typedef void (^ksEachBlock)(NSString *obj);
 
 - (NSString *)removeSpeakEndChracter:(NSString *)speakText {
     return [speakText stringByReplacingOccurrencesOfString:@"[r]" withString:@""];
-}
-
-- (void)configureOutputTextViewWith:(NSString *)outputText {
-    [self.outputTextView.textStorage.mutableString setString:outputText];
-    [self writeToPasteboard:outputText];
 }
 
 - (void)writeToPasteboard:(NSString *)string {
