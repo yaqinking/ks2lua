@@ -7,12 +7,16 @@
 //
 
 #import "ViewController.h"
+#import "NSString+ks.h"
 
 static NSString * const ksFileNameKey = @"storage";
+static NSString * const ksTimeKey = @"time";
 
 @interface ViewController()<NSTextFieldDelegate>
 
 @property (weak) IBOutlet NSTextField *sourcePathLabel;
+@property (unsafe_unretained) IBOutlet NSTextView *textView;
+@property (weak) IBOutlet NSTextField *fileNameTextField;
 
 typedef void (^ksEachBlock)(NSString *obj);
 
@@ -36,6 +40,10 @@ typedef void (^ksEachBlock)(NSString *obj);
         self.sourcePathLabel.stringValue = url.path;
     }
 }
+- (IBAction)export:(id)sender {
+    NSString *filePath = [NSString stringWithFormat:@"/Users/yaqinking/Downloads/Keiko/%@.lua", self.fileNameTextField.stringValue];
+    [self tranlateKs:self.textView.textStorage.string saveTo:filePath];
+}
 
 - (IBAction)startAnalysis:(id)sender {
     NSString *path = self.sourcePathLabel.stringValue;
@@ -51,6 +59,7 @@ typedef void (^ksEachBlock)(NSString *obj);
                                          {
                                              if (error) {
                                                  NSLog(@"[Error] %@ (%@)", error, url);
+                                                 [NSApp presentError:error];
                                                  return NO;
                                              }
                                              
@@ -79,9 +88,10 @@ typedef void (^ksEachBlock)(NSString *obj);
     [mutableFileURLs enumerateObjectsUsingBlock:^(id  _Nonnull filePath, NSUInteger idx, BOOL * _Nonnull stop) {
         NSURL *url = filePath;
         NSError *error = nil;
-        NSString *contentString = [NSString stringWithContentsOfFile:url.path encoding:encode error:&error];
+        NSString *contentString = [NSString stringWithContentsOfFile:url.path encoding:NSUTF8StringEncoding error:&error];
         if (error) {
             NSLog(@"%@", error);
+            [NSApp presentError:error];
         }
         NSString *path = [url.path stringByReplacingOccurrencesOfString:@".ks" withString:@".lua"];
         [self tranlateKs:contentString saveTo:path];
@@ -96,12 +106,27 @@ typedef void (^ksEachBlock)(NSString *obj);
     __block NSString *soundEffectName;
     __block NSString *fgName;
     __block NSString *voName;
-    
+    __block NSString *storyVoiceName;
     __block NSMutableString *outputText = [NSMutableString new];
     [linesArray enumerateObjectsUsingBlock:^(NSString * _Nonnull line, NSUInteger idx, BOOL * _Nonnull stop) {
+        // 章节说明
+        if ([line hasPrefix:@"*"]) {
+            [outputText appendFormat:@"-- %@\r",[line stringByReplacingOccurrencesOfString:@"*" withString:@""]];
+            return;
+        }
+        // 空行
+        if ([line isEqualToString:@"[rn]"]) {
+            return;
+        }
         // 处理注释
         if ([line containsString:@";"]) {
-            [outputText appendFormat:@"-- %@\r",[self removeCommentNoise:line]];
+            [outputText appendFormat:@"-- %@\r",[line ks_removeCommentNoise]];
+            return;
+        }
+        // 章节名称
+        if ([line containsString:@"EPingame"]) {
+            NSString *epName = [line ks_removeEPNameNoise];
+            [outputText appendFormat:@"chapt(\"%@\")", epName];
             return;
         }
         if ([line containsString:@"@playse"]) {
@@ -110,7 +135,7 @@ typedef void (^ksEachBlock)(NSString *obj);
             __block NSString *buf;
             [array enumerateObjectsUsingBlock:^(NSString * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
                 if ([obj containsString:@"="]) {
-                    obj = [self removeDoubleQuates:obj];
+                    obj = [obj ks_removeDoubleQuates];
                     NSRange range = [obj rangeOfString:@"="];
                     NSString *name = [obj substringFromIndex:range.location+1];
                     if ([obj containsString:@"storage"]) {
@@ -118,7 +143,7 @@ typedef void (^ksEachBlock)(NSString *obj);
                     } else if ([obj containsString:@"loop"]) {
                         loop = name;
                     } else if ([obj containsString:@"buf"]) {
-                        NSString *tempBuf = [self valueForksKey:@"buf" From:obj];
+                        NSString *tempBuf = [obj ks_valueForKey:@"buf"];
                         if (tempBuf) {
                             buf = tempBuf;
                         }
@@ -138,6 +163,16 @@ typedef void (^ksEachBlock)(NSString *obj);
             }
             line = [NSString stringWithFormat:@"se(\"%@\")\r", soundEffectName];
             [outputText appendString: line];
+            return;
+        }
+        // 故事书
+        if ([line containsString:@"story"]) {
+            [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
+                NSString *voName = [obj ks_valueForKey:ksFileNameKey];
+                if (voName) {
+                    storyVoiceName = voName;
+                }
+            }];
             return;
         }
         // 处理 se 背景音乐淡出
@@ -173,12 +208,52 @@ typedef void (^ksEachBlock)(NSString *obj);
         if ([line containsString:@"@bgm"]) {
             __block NSString *bgmName;
             [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
-                NSString *name = [self valueForksKey:@"storage" From:obj];
+                NSString *name = [obj ks_valueForKey:ksFileNameKey];
                 if (name) {
                     bgmName = name;
                 }
             }];
-            [outputText appendFormat:@"bgm(\"%@\")\r\r", bgmName];
+            if (bgmName) {
+                [outputText appendFormat:@"bgm(\"%@\")\r\r", bgmName];
+            } else {
+                [outputText appendString:@"stop_bgm()\r"];
+            }
+            return;
+        }
+        // 等待
+        if ([line containsString:@"@wait"]) {
+            __block NSString *waitTime;
+            [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
+                NSString *time = [obj ks_valueForKey:ksTimeKey];
+                if (time) {
+                    waitTime = time;
+                }
+            }];
+            [outputText appendFormat:@"wait(%@)\r", waitTime];
+            return;
+        }
+        // 跳转脚本
+        if ([line containsString:@"@jump"]) {
+            __block NSString *scriptName;
+            [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
+                NSString *fileName = [obj ks_valueForKey:ksFileNameKey];
+                if (fileName) {
+                    scriptName = [[fileName ks_removeDoubleQuates] stringByReplacingOccurrencesOfString:@".ks" withString:@""];
+                }
+            }];
+            [outputText appendFormat:@"jump(\"%@\")\r", scriptName];
+            return;
+        }
+        // 全屏叙述
+        if ([line containsString:@"@eff0_0"]) {
+            __block NSString *words;
+            [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
+                NSString *string = [obj ks_valueForKey:@"ch"];
+                if (string) {
+                    words = string;
+                }
+            }];
+            [outputText appendFormat:@"story(\"%@\")\r", words];
             return;
         }
         // 变换背景
@@ -188,25 +263,25 @@ typedef void (^ksEachBlock)(NSString *obj);
             __block NSString *backgroundTransitionDuration;
             __block NSString *transitionRule;
             [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
-                NSString *name = [self valueForksKey:@"storage" From:obj];
+                NSString *name = [obj ks_valueForKey:ksFileNameKey];
                 if (name) {
                     backgroundImageName = name;
                 }
-                NSString *method = [self valueForksKey:@"method" From:obj];
+                NSString *method = [obj ks_valueForKey:@"method"];
                 if (method) {
                     backgroundTransitionMethod = method;
                 }
-                NSString *time = [self valueForksKey:@"time" From:obj];
+                NSString *time = [obj ks_valueForKey:ksTimeKey];
                 if (time) {
                     backgroundTransitionDuration = time;
                 }
-                NSString *rule = [self valueForksKey:@"rule" From:obj];
+                NSString *rule = [obj ks_valueForKey:@"rule"];
                 if (rule) {
                     transitionRule = rule;
                 }
             }];
-            backgroundTransitionMethod = [self luaTransitionMethodFromks:backgroundTransitionMethod];
-            line = [NSString stringWithFormat:@"bg(%@,%@,%@,%@)\r", backgroundImageName, backgroundTransitionDuration, backgroundTransitionMethod, transitionRule];
+            backgroundTransitionMethod = [backgroundTransitionMethod ks_transitionMethod];
+            line = [NSString stringWithFormat:@"bg(\"%@\",%@,%@,%@)\r", backgroundImageName, backgroundTransitionDuration, backgroundTransitionMethod, transitionRule];
             [outputText appendString:line];
             return;
         }
@@ -216,27 +291,27 @@ typedef void (^ksEachBlock)(NSString *obj);
             __block NSString *backgroundTransitionMethod;
             __block NSString *transitionRule;
             [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
-                NSString *name = [self valueForksKey:@"storage" From:obj];
+                NSString *name = [obj ks_valueForKey:ksFileNameKey];
                 if (name) {
-                    backgroundImageName = [self removeDoubleQuates:name];
+                    backgroundImageName = name;
                 }
-                NSString *method = [self valueForksKey:@"method" From:obj];
+                NSString *method = [obj ks_valueForKey:@"method"];
                 if (method) {
                     backgroundTransitionMethod = method;
                 }
-                NSString *rule = [self valueForksKey:@"rule" From:obj];
+                NSString *rule = [obj ks_valueForKey:@"rule"];
                 if (rule) {
                     transitionRule = rule;
                 }
             }];
-            backgroundTransitionMethod = [self luaTransitionMethodFromks:backgroundTransitionMethod];
-            line = [NSString stringWithFormat:@"\rhide_ui()\rbg(\"%@\",1000,%@,%@)\rshow_ui()\r", backgroundImageName,backgroundTransitionMethod.length > 0 ? backgroundTransitionMethod : @"1", transitionRule];
+            backgroundTransitionMethod = [backgroundTransitionMethod ks_transitionMethod];
+            line = [NSString stringWithFormat:@"\rhide_ui()\rbg(\"%@\",1000,%@,%@)\rshow_ui()\r", backgroundImageName,backgroundTransitionMethod.length > 0 ? backgroundTransitionMethod : @"1", transitionRule.length > 0 ? transitionRule : @"1"];
             [outputText appendString:line];
             return;
         }
         if ([line containsString:@"@fg"]) {
             [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
-                NSString *fgFileName = [self valueForksKey:@"storage" From:obj];
+                NSString *fgFileName = [obj ks_valueForKey:ksFileNameKey];
                 if (fgFileName) {
                     fgName = fgFileName;
                 }
@@ -249,31 +324,46 @@ typedef void (^ksEachBlock)(NSString *obj);
         }
         if ([line containsString:@"@vo"]) {
             [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
-                NSString *voFileName = [self valueForksKey:@"storage" From:obj];
+                NSString *voFileName = [obj ks_valueForKey:ksFileNameKey];
                 if (voFileName) {
                     voName = voFileName;
                     // voName 要搭配下一句话
                 }
             }];
         }
+        /**
+         cg(name,group,time,mode,rule)
+         参数说明:
+         name:CG的名字
+         group:CG的ID（用来解锁CG，每张CG都有唯一ID）
+         time:完成切换CG需要的时间
+         mode:切换模式（0:直接切换，1:遮罩切换，2:淡入，3:淡出）
+         rule:遮罩规则（对应rule下的遮罩png）
+         指令例子:
+         cg("CG_1_1",1,0,0,0)--直接显示CG_1_1
+         cg("CG_2_1",2,200,1,"24")--通过遮罩24在200秒内显示CG_2_1
+         */
         if ([line containsString:@"@cg"]) {
             __block NSString *cgName;
+            __block NSString *duration;
             [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
-                NSString *cgFileName = [self valueForksKey:ksFileNameKey From:line];
+                NSString *cgFileName = [obj ks_valueForKey:ksFileNameKey];
                 if (cgFileName) {
                     cgName = cgFileName;
                 }
+                NSString *time = [obj ks_valueForKey:ksTimeKey];
+                if (time) duration = time;
             }];
-            [outputText appendFormat:@"cg(\"%@\",1,0,0,0)\r", cgName];
+            [outputText appendFormat:@"cg(\"%@\",1,%@,0,0)\r", cgName, duration];
         }
         if ([line containsString:@"spk"]) {
-            line = [self removeSpeakerNoiseChracter:line];
+            line = [line ks_removeSpeakerNoiseChracter];
             NSRange range = [line rangeOfString:@"="];
             NSString *name = [line substringFromIndex:range.location+1];
             chracterName = name;
         }
         if ([line containsString:@"[r]"]) {
-            line = [self removeSpeakEndChracter:line];
+            line = [line ks_removeSpeakEndChracter];
             if ([chracterName containsString:@"\""]) {
                 line = [NSString stringWithFormat:@"say(\"%@\")\r", line];
             } else {
@@ -292,7 +382,12 @@ typedef void (^ksEachBlock)(NSString *obj);
             // 不包含 关键字，是说话的最后一行，或者没有定义角色的行
             if (line.length > 0) {
                 if ([chracterName containsString:@"\""]) {
-                    line = [NSString stringWithFormat:@"say(\"%@\")\r", line];
+                    if (storyVoiceName.length > 0) {
+                        line = [NSString stringWithFormat:@"say(\" \",\"%@\",\"%@\")\r", line, storyVoiceName];
+                        storyVoiceName = nil;
+                    } else {
+                        line = [NSString stringWithFormat:@"say(\"%@\")\r", line];
+                    }
                 } else if ( chracterName.length > 0) {
                     if (voName.length > 0) {
                         line = [NSString stringWithFormat:@"say(\"%@\",\"%@\",\"%@\")\r", chracterName, line, voName];
@@ -305,7 +400,7 @@ typedef void (^ksEachBlock)(NSString *obj);
                 }
                 [outputText appendString:line];
             } else {
-                [outputText appendString:@"\r"];
+//                [outputText appendString:@"\r"];
             }
         }
     }];
@@ -330,45 +425,6 @@ typedef void (^ksEachBlock)(NSString *obj);
     }];
 }
 
-/**
- *  从字符串中得到一个 ks Key 的 Value
- *
- *  @param key ks Key
- *  @param obj Value
- *
- *  @return 处理后的 Value
- */
-- (NSString *)valueForksKey:(NSString *)key From:(NSString *)obj {
-    if ([obj containsString:key]) {
-        NSRange range = [obj rangeOfString:@"="];
-        return [obj substringFromIndex:range.location+1];
-    }
-    return nil;
-}
-
-- (NSString *)luaTransitionMethodFromks:(NSString *)transition {
-    // 参考 RuntimeEngine 指令集
-    if ([transition isEqualToString:@"crossfade"]) {
-        return @"2";
-    }
-    return nil;
-}
-
-- (NSString *)removeCommentNoise:(NSString *)comment {
-    return [[[[[comment stringByReplacingOccurrencesOfString:@";" withString:@""] stringByReplacingOccurrencesOfString:@"/" withString:@""] stringByReplacingOccurrencesOfString:@"*" withString:@""] stringByReplacingOccurrencesOfString:@"[r]" withString:@""] stringByReplacingOccurrencesOfString:@"\\" withString:@""];
-}
-
-- (NSString *)removeDoubleQuates:(NSString *)string {
-    return [string stringByReplacingOccurrencesOfString:@"\"" withString:@""];
-}
-
-- (NSString *)removeSpeakerNoiseChracter:(NSString *)speakerLineString {
-    return [[speakerLineString stringByReplacingOccurrencesOfString:@"[" withString:@""] stringByReplacingOccurrencesOfString:@"]" withString:@""];
-}
-
-- (NSString *)removeSpeakEndChracter:(NSString *)speakText {
-    return [speakText stringByReplacingOccurrencesOfString:@"[r]" withString:@""];
-}
 
 - (void)writeToPasteboard:(NSString *)string {
     NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];

@@ -669,11 +669,11 @@
             <objects>
                 <viewController title="ks2lua" id="XfG-lQ-9wD" customClass="ViewController" sceneMemberID="viewController">
                     <view key="view" id="m2S-Jp-Qdl">
-                        <rect key="frame" x="0.0" y="0.0" width="529" height="177"/>
+                        <rect key="frame" x="0.0" y="0.0" width="529" height="449"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <subviews>
                             <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="DYI-MC-zNm">
-                                <rect key="frame" x="423" y="128" width="92" height="32"/>
+                                <rect key="frame" x="423" y="400" width="92" height="32"/>
                                 <buttonCell key="cell" type="push" title="开始分析" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="sKp-wY-2TX">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" size="13" name=".PingFangSC-Regular"/>
@@ -683,7 +683,7 @@
                                 </connections>
                             </button>
                             <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Edy-H1-diH">
-                                <rect key="frame" x="18" y="75" width="493" height="38"/>
+                                <rect key="frame" x="18" y="347" width="493" height="38"/>
                                 <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" id="QYe-jw-vXB">
                                     <font key="font" metaFont="system"/>
                                     <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
@@ -691,7 +691,7 @@
                                 </textFieldCell>
                             </textField>
                             <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="XaA-hD-LUc">
-                                <rect key="frame" x="20" y="132" width="66" height="25"/>
+                                <rect key="frame" x="20" y="404" width="66" height="25"/>
                                 <buttonCell key="cell" type="roundTextured" title="选择路径" bezelStyle="texturedRounded" alignment="center" lineBreakMode="truncatingTail" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="pN2-Lw-7mx">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" size="13" name=".PingFangSC-Regular"/>
@@ -700,15 +700,63 @@
                                     <action selector="choosePath:" target="XfG-lQ-9wD" id="Fnk-IX-Z8C"/>
                                 </connections>
                             </button>
+                            <scrollView fixedFrame="YES" horizontalLineScroll="10" horizontalPageScroll="10" verticalLineScroll="10" verticalPageScroll="10" hasHorizontalScroller="NO" usesPredominantAxisScrolling="NO" translatesAutoresizingMaskIntoConstraints="NO" id="A40-S6-CNi">
+                                <rect key="frame" x="20" y="38" width="489" height="254"/>
+                                <clipView key="contentView" ambiguous="YES" id="9ZQ-so-O2m">
+                                    <rect key="frame" x="1" y="1" width="487" height="252"/>
+                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                    <subviews>
+                                        <textView ambiguous="YES" importsGraphics="NO" findStyle="panel" continuousSpellChecking="YES" allowsUndo="YES" usesRuler="YES" usesFontPanel="YES" verticallyResizable="YES" allowsNonContiguousLayout="YES" quoteSubstitution="YES" dashSubstitution="YES" smartInsertDelete="YES" id="x8U-g5-GDs">
+                                            <rect key="frame" x="0.0" y="0.0" width="487" height="252"/>
+                                            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                            <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                            <size key="minSize" width="487" height="252"/>
+                                            <size key="maxSize" width="487" height="10000000"/>
+                                            <color key="insertionPointColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                            <size key="minSize" width="487" height="252"/>
+                                            <size key="maxSize" width="487" height="10000000"/>
+                                        </textView>
+                                    </subviews>
+                                    <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                </clipView>
+                                <scroller key="horizontalScroller" hidden="YES" verticalHuggingPriority="750" doubleValue="1" horizontal="YES" id="AxX-hQ-Nmi">
+                                    <rect key="frame" x="-100" y="-100" width="87" height="18"/>
+                                    <autoresizingMask key="autoresizingMask"/>
+                                </scroller>
+                                <scroller key="verticalScroller" verticalHuggingPriority="750" doubleValue="1" horizontal="NO" id="Ieo-vJ-v0L">
+                                    <rect key="frame" x="472" y="1" width="16" height="252"/>
+                                    <autoresizingMask key="autoresizingMask"/>
+                                </scroller>
+                            </scrollView>
+                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="oL7-mj-DDP">
+                                <rect key="frame" x="437" y="1" width="66" height="32"/>
+                                <buttonCell key="cell" type="push" title="导出" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="dl2-w2-10t">
+                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                    <font key="font" size="13" name=".PingFangSC-Regular"/>
+                                </buttonCell>
+                                <connections>
+                                    <action selector="export:" target="XfG-lQ-9wD" id="iox-ev-Kpe"/>
+                                </connections>
+                            </button>
+                            <textField verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="66a-sp-qaM">
+                                <rect key="frame" x="20" y="7" width="220" height="22"/>
+                                <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" state="on" borderStyle="bezel" drawsBackground="YES" id="PYW-EM-qIe">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="textColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
                         </subviews>
                     </view>
                     <connections>
+                        <outlet property="fileNameTextField" destination="66a-sp-qaM" id="MOe-9D-XC2"/>
                         <outlet property="sourcePathLabel" destination="Edy-H1-diH" id="Qce-T5-lj7"/>
+                        <outlet property="textView" destination="x8U-g5-GDs" id="32n-mL-75K"/>
                     </connections>
                 </viewController>
                 <customObject id="rPt-NT-nkU" userLabel="First Responder" customClass="NSResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="-512.5" y="647.5"/>
+            <point key="canvasLocation" x="-512.5" y="783.5"/>
         </scene>
     </scenes>
 </document>

@@ -12,6 +12,7 @@
 		F46C8B041D4B7F8000F11890 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F46C8B031D4B7F8000F11890 /* ViewController.m */; };
 		F46C8B061D4B7F8000F11890 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F46C8B051D4B7F8000F11890 /* Assets.xcassets */; };
 		F46C8B091D4B7F8000F11890 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F46C8B071D4B7F8000F11890 /* Main.storyboard */; };
+		F47404531D4F6287005E49CB /* NSString+ks.m in Sources */ = {isa = PBXBuildFile; fileRef = F47404521D4F6287005E49CB /* NSString+ks.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,8 @@
 		F46C8B051D4B7F8000F11890 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F46C8B081D4B7F8000F11890 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		F46C8B0A1D4B7F8000F11890 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F47404511D4F6287005E49CB /* NSString+ks.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSString+ks.h"; sourceTree = "<group>"; };
+		F47404521D4F6287005E49CB /* NSString+ks.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSString+ks.m"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +67,8 @@
 				F46C8B071D4B7F8000F11890 /* Main.storyboard */,
 				F46C8B0A1D4B7F8000F11890 /* Info.plist */,
 				F46C8AFF1D4B7F8000F11890 /* Supporting Files */,
+				F47404511D4F6287005E49CB /* NSString+ks.h */,
+				F47404521D4F6287005E49CB /* NSString+ks.m */,
 			);
 			path = ks2lua;
 			sourceTree = "<group>";
@@ -146,6 +151,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F46C8B041D4B7F8000F11890 /* ViewController.m in Sources */,
+				F47404531D4F6287005E49CB /* NSString+ks.m in Sources */,
 				F46C8B011D4B7F8000F11890 /* main.m in Sources */,
 				F46C8AFE1D4B7F8000F11890 /* AppDelegate.m in Sources */,
 			);
