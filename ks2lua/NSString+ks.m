@@ -27,6 +27,29 @@
     return nil;
 }
 
+- (NSString *)ks_fgPosition {
+    if ([self isEqualToString:@"r"] || [self isEqualToString:@"right"]) {
+        return @"3";
+    }
+    if ([self isEqualToString:@"l"] || [self isEqualToString:@"left"]) {
+        return @"2";
+    }
+    if ([self isEqualToString:@"center"]) {
+        return @"1";
+    }
+    return nil;
+}
+
+- (NSString *)ks_cgGroup {
+    NSString *group = [self substringWithRange:NSMakeRange(2, 2)];
+    if ([group hasPrefix:@"0"]) {
+        return [group substringFromIndex:1];
+    } else {
+        return group;
+    }
+    return nil;
+}
+
 - (NSString *)ks_removeCommentNoise {
     return [[[[[self stringByReplacingOccurrencesOfString:@";" withString:@""] stringByReplacingOccurrencesOfString:@"/" withString:@""] stringByReplacingOccurrencesOfString:@"*" withString:@""] stringByReplacingOccurrencesOfString:@"[r]" withString:@""] stringByReplacingOccurrencesOfString:@"\\" withString:@""];
 }
