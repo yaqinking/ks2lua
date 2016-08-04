@@ -88,7 +88,7 @@ typedef void (^ksEachBlock)(NSString *obj);
         }
     }
     
-    unsigned long encode = CFStringConvertEncodingToNSStringEncoding(kCFStringEncodingGB_18030_2000);
+//    unsigned long encode = CFStringConvertEncodingToNSStringEncoding(kCFStringEncodingGB_18030_2000);
     [mutableFileURLs enumerateObjectsUsingBlock:^(id  _Nonnull filePath, NSUInteger idx, BOOL * _Nonnull stop) {
         NSURL *url = filePath;
         NSError *error = nil;
@@ -143,7 +143,6 @@ typedef void (^ksEachBlock)(NSString *obj);
             return;
         }
         if ([line containsString:@"@playse"]) {
-            NSArray<NSString *> *array = [line componentsSeparatedByString:@" "];
             __block NSString *loop;
             __block NSString *buf;
             [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
@@ -311,7 +310,7 @@ typedef void (^ksEachBlock)(NSString *obj);
                 }
             }];
             backgroundTransitionMethod = [backgroundTransitionMethod ks_transitionMethod];
-            line = [NSString stringWithFormat:@"bg(\"%@\",%@,%@,\"%@\")\r", backgroundImageName, backgroundTransitionDuration ? backgroundTransitionDuration : @1, backgroundTransitionMethod ? backgroundTransitionMethod : @"", transitionRule ? transitionRule : @"0"];
+            line = [NSString stringWithFormat:@"bg(\"%@\",%@,%@,\"%@\")\r", backgroundImageName, backgroundTransitionDuration ? backgroundTransitionDuration : @1, backgroundTransitionMethod ? backgroundTransitionMethod : @"1", transitionRule ? transitionRule : @"0"];
             [outputText appendString:line];
             return;
         }
@@ -333,6 +332,9 @@ typedef void (^ksEachBlock)(NSString *obj);
                 NSString *rule = [obj ks_valueForKey:@"rule"];
                 if (rule) {
                     transitionRule = [rule ks_removeDoubleQuates];
+                    if ([transitionRule isEqualToString:@"base"]) {
+                        transitionRule = @"0";
+                    }
                 }
                 NSString *time = [obj ks_valueForKey:ksTimeKey];
                 if (time) backgroundTransitionDuration = time;
@@ -365,6 +367,10 @@ typedef void (^ksEachBlock)(NSString *obj);
                 NSString *pos = [obj ks_valueForKey:ksPositionKey];
                 if (pos) {
                     position = [pos ks_fgPosition];
+                // Keiko_4th fg bug fix
+                } else if ([obj containsString:@"@fg3p"]) {
+                    if ([obj containsString:@"left"]) position = @"2";
+                    if ([obj containsString:@"right"]) position = @"3";
                 }
                 NSString *layer = [obj ks_valueForKey:ksLayerKey];
                 if (layer) fgID = layer;
@@ -376,6 +382,34 @@ typedef void (^ksEachBlock)(NSString *obj);
             } else {
                 [outputText appendFormat:@"fg(\"%@\",%@,%@,%@)\r", fgName, fgDuration ? fgDuration : @"300", fgID ? fgID : @"1", position ? position : @"1"];
             }
+        }
+        if ([line containsString:@"@image"]) {
+            __block NSString *fgID;
+            [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
+                NSString *fgFileName = [obj ks_valueForKey:ksFileNameKey];
+                if (fgFileName) {
+                    fgName = [fgFileName ks_removeDoubleQuates];
+                }
+                NSString *layer = [obj ks_valueForKey:ksLayerKey];
+                if (layer) fgID = layer;
+            }];
+            if ([fgName isEqualToString:@"none"]) {
+                [outputText appendFormat:@"hide_fg(%@)\r", fgID ? fgID : @"1"];
+            } else {
+                [outputText appendFormat:@"fg(\"%@\",%@,%@,%@)\r", fgName, @"300", fgID ? fgID : @"1", @"1"];
+            }
+        }
+        if ([line containsString:@"@move"]) {
+            __block NSString *fgID;
+            [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
+                NSString *layer = [obj ks_valueForKey:ksLayerKey];
+                if (layer) fgID = layer;
+            }];
+            [outputText appendFormat:@"-- move_fg(%@)\r", fgID ? fgID : @"1"];
+            return;
+        }
+        if ([line containsString:@"@quake"]) {
+            [outputText appendFormat:@"-- shake_camera(%@,%@)\r",@"500",@"1"];
         }
         if ([line containsString:@"@se"]) {
             [self enumerateLineObjectsFrom:line each:^(NSString *obj) {
