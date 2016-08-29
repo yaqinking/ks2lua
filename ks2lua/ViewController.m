@@ -391,7 +391,12 @@ typedef void (^ksEachBlock)(NSString *obj);
                     fgName = [fgFileName ks_removeDoubleQuates];
                 }
                 NSString *layer = [obj ks_valueForKey:ksLayerKey];
-                if (layer) fgID = layer;
+                if (layer) {
+                    fgID = layer;
+                    if ([fgID isEqualToString:@"base"]) {
+                        fgID = @"1";
+                    }
+                }
             }];
             if ([fgName isEqualToString:@"none"]) {
                 [outputText appendFormat:@"hide_fg(%@)\r", fgID ? fgID : @"1"];
